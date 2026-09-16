@@ -4,10 +4,7 @@ A .NET 10 console tool that reads a CSV of invoices and imports it into SQL Serv
 EF Core. Small on purpose — it exists to be a clean example of layering a console app
 without ceremony.
 
-[![CI](https://github.com/Menzi-Thami/InvoiveImport/actions/workflows/ci.yml/badge.svg)](https://github.com/Menzi-Thami/InvoiveImport/actions/workflows/ci.yml)
-
-> The repository name is a typo of "InvoiceImport" that predates the code. The namespaces
-> are spelled `InvoiceImporter`.
+[![CI](https://github.com/Menzi-Thami/InvoiceImport/actions/workflows/ci.yml/badge.svg)](https://github.com/Menzi-Thami/InvoiceImport/actions/workflows/ci.yml)
 
 ## What it does
 
