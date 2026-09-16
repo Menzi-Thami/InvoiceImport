@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\InvoiveImport.csproj" />
+    <ProjectReference Include="..\InvoiceImport.csproj" />
   </ItemGroup>
 
 </Project>

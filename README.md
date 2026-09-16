@@ -42,7 +42,7 @@ dotnet ef database update
 ## Tests
 
 ```bash
-dotnet test InvoiveImport.sln
+dotnet test InvoiceImport.sln
 ```
 
 16 unit tests covering CSV parsing, date parsing, and the import flow.
