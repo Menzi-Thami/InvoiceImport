@@ -41,7 +41,20 @@ namespace InvoiceImporter
                 var dataImporter = new DataImporter(
                     csvReader, loggerFactory.CreateLogger<DataImporter>(), repository, invoiceFactory);
 
-                await dataImporter.ImportData(filePath);
+                // Ctrl+C cancels the import cleanly; nothing is saved unless SaveChanges completes.
+                using var cts = new CancellationTokenSource();
+                Console.CancelKeyPress += (_, e) =>
+                {
+                    e.Cancel = true;
+                    cts.Cancel();
+                };
+
+                await dataImporter.ImportData(filePath, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                logger.LogWarning("Import cancelled; nothing was saved");
+                Environment.ExitCode = 1;
             }
             catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 })
             {

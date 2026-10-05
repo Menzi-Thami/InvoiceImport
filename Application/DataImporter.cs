@@ -22,18 +22,24 @@ namespace InvoiceImporter.Application
             _invoiceFactory = invoiceFactory;
         }
 
-        public Task ImportData(string filePath)
+        public async Task ImportData(string filePath, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Reading CSV file {FilePath}", filePath);
 
             List<string[]> csvData = _csvReader.ReadCsv(filePath);
+            var rows = csvData.Skip(1).ToList(); // Skip header row
 
-            int imported = 0, skipped = 0;
             // Case-insensitive to match the database's default collation, which the
             // unique index on InvoiceNumber enforces: "inv-001" and "INV-001" collide there.
+            var fileNumbers = rows.Select(r => r[0]).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var existing = await _invoiceRepository.GetExistingInvoiceNumbersAsync(fileNumbers, cancellationToken);
+
+            int imported = 0, skipped = 0;
             var queued = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var row in csvData.Skip(1)) // Skip header row
+            foreach (var row in rows)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var invoiceNumber = row[0];
                 if (queued.Contains(invoiceNumber))
                 {
@@ -42,7 +48,7 @@ namespace InvoiceImporter.Application
                     continue;
                 }
 
-                if (_invoiceRepository.InvoiceExists(invoiceNumber))
+                if (existing.Contains(invoiceNumber))
                 {
                     _logger.LogWarning("Invoice {InvoiceNumber} already exists; skipping", invoiceNumber);
                     skipped++;
@@ -56,13 +62,11 @@ namespace InvoiceImporter.Application
                 _logger.LogDebug("Invoice {InvoiceNumber} queued for import", invoiceNumber);
             }
 
-            _invoiceRepository.SaveChanges();
+            await _invoiceRepository.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation(
                 "Import completed: {Imported} imported, {Skipped} skipped from {FilePath}",
                 imported, skipped, filePath);
-
-            return Task.CompletedTask;
         }
     }
 }

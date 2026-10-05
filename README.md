@@ -53,7 +53,8 @@ dotnet ef database update
 Each invoice number is imported once. Repeats inside a file are skipped with a warning,
 invoices already in the database are skipped, and a unique index on `InvoiceNumber`
 stops two runs started at the same time from both inserting the same invoice (the
-losing run saves nothing and exits with code 1).
+losing run saves nothing and exits with code 1). The whole file is saved in one
+transaction, so Ctrl+C during an import cancels it cleanly with nothing written.
 
 ### Upgrading the schema: `UniqueInvoiceNumber`
 
