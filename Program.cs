@@ -1,3 +1,5 @@
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using InvoiceImporter.Application;
 using InvoiceImporter.Domain;
@@ -41,6 +43,12 @@ namespace InvoiceImporter
                     csvReader, loggerFactory.CreateLogger<DataImporter>(), repository, invoiceFactory);
 
                 await dataImporter.ImportData(filePath);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 })
+            {
+                // Unique index on InvoiceNumber: another run imported one of these invoices first.
+                logger.LogError(ex, "Invoice import failed: an invoice in the file has already been imported; nothing was saved");
+                Environment.ExitCode = 1;
             }
             catch (Exception ex)
             {

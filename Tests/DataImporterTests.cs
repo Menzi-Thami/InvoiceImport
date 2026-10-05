@@ -51,6 +51,28 @@ namespace InvoiceImporter.Tests
         }
 
         [Fact]
+        public async Task ImportData_SkipsDuplicateInvoiceNumbersWithinOneFile()
+        {
+            var csv = new FakeCsvReader(new List<string[]>
+            {
+                new[] { "header" },
+                Row("INV-001"),
+                Row("INV-001"),
+                Row("inv-001"),
+                Row("INV-002"),
+            });
+            var repo = new FakeRepository();
+
+            var importer = new DataImporter(csv, NullLogger<DataImporter>.Instance, repo, new PassthroughFactory());
+
+            await importer.ImportData("any.csv");
+
+            repo.Added.Count.ShouldBe(2);
+            repo.Added[0].InvoiceNumber.ShouldBe("INV-001");
+            repo.Added[1].InvoiceNumber.ShouldBe("INV-002");
+        }
+
+        [Fact]
         public async Task ImportData_PropagatesReaderFailures_InsteadOfSwallowing()
         {
             var csv = new ThrowingCsvReader();

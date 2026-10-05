@@ -29,9 +29,19 @@ namespace InvoiceImporter.Application
             List<string[]> csvData = _csvReader.ReadCsv(filePath);
 
             int imported = 0, skipped = 0;
+            // Case-insensitive to match the database's default collation, which the
+            // unique index on InvoiceNumber enforces: "inv-001" and "INV-001" collide there.
+            var queued = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var row in csvData.Skip(1)) // Skip header row
             {
                 var invoiceNumber = row[0];
+                if (queued.Contains(invoiceNumber))
+                {
+                    _logger.LogWarning("Invoice {InvoiceNumber} appears more than once in the file; skipping the repeat", invoiceNumber);
+                    skipped++;
+                    continue;
+                }
+
                 if (_invoiceRepository.InvoiceExists(invoiceNumber))
                 {
                     _logger.LogWarning("Invoice {InvoiceNumber} already exists; skipping", invoiceNumber);
@@ -41,6 +51,7 @@ namespace InvoiceImporter.Application
 
                 var invoice = _invoiceFactory.CreateInvoice(row);
                 _invoiceRepository.AddInvoice(invoice);
+                queued.Add(invoiceNumber);
                 imported++;
                 _logger.LogDebug("Invoice {InvoiceNumber} queued for import", invoiceNumber);
             }

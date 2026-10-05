@@ -18,7 +18,8 @@ namespace InvoiceImporter.Infrastructure.Configurations
             entity.HasKey(e => e.InvoiceId);
             entity.Property(e => e.InvoiceId).ValueGeneratedOnAdd();
 
-            entity.Property(e => e.InvoiceNumber).IsRequired();
+            entity.Property(e => e.InvoiceNumber).HasMaxLength(50).IsRequired();
+            entity.HasIndex(e => e.InvoiceNumber).IsUnique();
             entity.Property(e => e.Address);
             entity.Property(e => e.InvoiceDate);
             entity.Property(e => e.InvoiceTotal);
