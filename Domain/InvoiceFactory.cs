@@ -32,28 +32,39 @@ namespace InvoiceImporter.Domain
                 invoiceNumber: csvRow[0],
                 invoiceDate: invoiceDate,
                 address: csvRow[2],
-                invoiceTotal: ParseDouble(csvRow[3]));
+                invoiceTotal: ParseAmount(csvRow[3], csvRow[0], nameof(InvoiceHeader.InvoiceTotal)));
 
             // Each line occupies three columns: Description, Quantity, UnitPrice.
-            for (int i = FirstLineColumn; i + ColumnsPerLine - 1 < csvRow.Length; i += ColumnsPerLine)
+            for (int i = FirstLineColumn, lineNumber = 1; i + ColumnsPerLine - 1 < csvRow.Length; i += ColumnsPerLine, lineNumber++)
             {
                 invoice.AddLine(new InvoiceLine(
                     description: csvRow[i],
-                    quantity: ParseDouble(csvRow[i + 1]),
-                    unitSellingPriceExVat: ParseDouble(csvRow[i + 2])));
+                    quantity: ParseAmount(csvRow[i + 1], csvRow[0], $"line {lineNumber} {nameof(InvoiceLine.Quantity)}"),
+                    unitSellingPriceExVat: ParseAmount(csvRow[i + 2], csvRow[0], $"line {lineNumber} {nameof(InvoiceLine.UnitSellingPriceExVAT)}")));
             }
 
             return invoice;
         }
 
-        private static double ParseDouble(string value)
+        // No thousands separators, currency symbols or parentheses: "1,5" must not become 15.
+        private const NumberStyles AmountStyle =
+            NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite |
+            NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint;
+
+        private static double? ParseAmount(string value, string invoiceNumber, string column)
         {
-            if (double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out double result))
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            if (double.TryParse(value, AmountStyle, CultureInfo.InvariantCulture, out double result))
             {
                 return result;
             }
 
-            return 0;
+            throw new FormatException(
+                $"Invoice {invoiceNumber}: {column} value '{value}' is not a number in the form 1234.56.");
         }
     }
 }
