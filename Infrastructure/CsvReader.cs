@@ -22,7 +22,10 @@ namespace InvoiceImporter.Infrastructure
                 {
                     FieldDelimiter = ',',
                     TextQualifier = '"',
-                    ForceQualifiers = true
+                    ForceQualifiers = true,
+                    // The library reads the header itself and yields data rows only; this is
+                    // its default, set here so callers don't skip the header a second time.
+                    HeaderRowIncluded = true
                 };
 
                 using (var cr = CSVReader.FromFile(filePath, settings))

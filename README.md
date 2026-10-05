@@ -12,6 +12,9 @@ Prompts for a CSV path, parses each row into an invoice header plus its lines, a
 them to the database. Paths copied from Explorer with "Copy as path" work as-is — the
 surrounding quotes are stripped for you.
 
+The first line of the file must be a header row (column names). It is read and
+skipped; every line after it is imported as an invoice.
+
 Amounts (total, quantity, unit price) must use a decimal point and no thousands
 separator, e.g. `1234.56` or `-2.5`. A blank amount is stored as empty (NULL). Any
 other value, such as `1,5`, `1.234,56` or `n/a`, stops the import with an error naming

@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using InvoiceImporter.Application;
 using InvoiceImporter.Domain;
+using InvoiceImporter.Domain.Services;
+using InvoiceImporter.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 using Xunit;
@@ -14,11 +16,10 @@ namespace InvoiceImporter.Tests
     public class DataImporterTests
     {
         [Fact]
-        public async Task ImportData_SkipsHeaderRow_AndImportsRemaining()
+        public async Task ImportData_ImportsEveryRowTheReaderReturns()
         {
             var csv = new FakeCsvReader(new List<string[]>
             {
-                new[] { "InvoiceNumber", "Date", "Address", "Total" }, // header
                 Row("INV-001"),
                 Row("INV-002"),
             });
@@ -37,7 +38,6 @@ namespace InvoiceImporter.Tests
         {
             var csv = new FakeCsvReader(new List<string[]>
             {
-                new[] { "header" },
                 Row("INV-001"),
                 Row("INV-002"),
             });
@@ -57,7 +57,6 @@ namespace InvoiceImporter.Tests
         {
             var csv = new FakeCsvReader(new List<string[]>
             {
-                new[] { "header" },
                 Row("INV-001"),
                 Row("INV-001"),
                 Row("inv-001"),
@@ -77,7 +76,7 @@ namespace InvoiceImporter.Tests
         [Fact]
         public async Task ImportData_LooksUpExistingInvoicesOnce_RegardlessOfRowCount()
         {
-            var rows = new List<string[]> { new[] { "header" } };
+            var rows = new List<string[]>();
             rows.AddRange(Enumerable.Range(1, 50).Select(i => Row($"INV-{i:000}")));
             rows.Add(Row("INV-001")); // repeat: requested once, not twice
             var repo = new FakeRepository();
@@ -94,7 +93,7 @@ namespace InvoiceImporter.Tests
         [Fact]
         public async Task ImportData_WhenCancelled_SavesNothing()
         {
-            var csv = new FakeCsvReader(new List<string[]> { new[] { "header" }, Row("INV-001") });
+            var csv = new FakeCsvReader(new List<string[]> { Row("INV-001") });
             var repo = new FakeRepository();
             using var cts = new CancellationTokenSource();
             cts.Cancel();
@@ -113,6 +112,58 @@ namespace InvoiceImporter.Tests
             var importer = new DataImporter(csv, NullLogger<DataImporter>.Instance, new FakeRepository(), new PassthroughFactory());
 
             await Should.ThrowAsync<InvalidOperationException>(() => importer.ImportData("any.csv", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task ImportData_FromFileWithHeader_ImportsEveryInvoice()
+        {
+            var path = WriteCsv(
+                "InvoiceNumber,InvoiceDate,Address,InvoiceTotal,Description,Quantity,UnitPrice",
+                "INV-001,07/04/2024 14:30,1 High Street,10,Widget,1,10",
+                "INV-002,08/04/2024 09:00,2 Low Road,25.5,Gadget,3,8.5");
+            try
+            {
+                var repo = new FakeRepository();
+                var importer = new DataImporter(
+                    new CsvReader(), NullLogger<DataImporter>.Instance, repo, new InvoiceFactory(new DateTimeParser()));
+
+                await importer.ImportData(path, CancellationToken.None);
+
+                repo.Added.Select(i => i.InvoiceNumber).ShouldBe(new[] { "INV-001", "INV-002" });
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Fact]
+        public async Task ImportData_FromHeaderOnlyFile_ImportsNothingWithoutError()
+        {
+            var path = WriteCsv("InvoiceNumber,InvoiceDate,Address,InvoiceTotal,Description,Quantity,UnitPrice");
+            try
+            {
+                var repo = new FakeRepository();
+                var importer = new DataImporter(
+                    new CsvReader(), NullLogger<DataImporter>.Instance, repo, new InvoiceFactory(new DateTimeParser()));
+
+                await importer.ImportData(path, CancellationToken.None);
+
+                repo.Added.ShouldBeEmpty();
+                repo.SaveChangesCallCount.ShouldBe(1);
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        private static string WriteCsv(params string[] lines)
+        {
+            // CRLF explicitly: CSVFile's default LineSeparator is "\r\n", and WriteAllLines would use LF on Linux CI.
+            var path = Path.Combine(Path.GetTempPath(), $"invoices-{Guid.NewGuid():N}.csv");
+            File.WriteAllText(path, string.Join("\r\n", lines) + "\r\n");
+            return path;
         }
 
         private static string[] Row(string invoiceNumber) =>
