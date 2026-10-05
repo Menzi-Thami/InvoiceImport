@@ -9,16 +9,16 @@ namespace InvoiceImporter.Infrastructure.Configurations
     /// </summary>
     public class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceLine>
     {
-        public void Configure(EntityTypeBuilder<InvoiceLine> entity)
+        public void Configure(EntityTypeBuilder<InvoiceLine> builder)
         {
-            entity.ToTable("InvoiceLines");
+            builder.ToTable("InvoiceLines");
 
-            entity.HasKey(e => e.LineId);
-            entity.Property(e => e.LineId).ValueGeneratedOnAdd();
+            builder.HasKey(e => e.LineId);
+            builder.Property(e => e.LineId).ValueGeneratedOnAdd();
 
-            entity.Property(e => e.Description);
-            entity.Property(e => e.Quantity);
-            entity.Property(e => e.UnitSellingPriceExVAT);
+            builder.Property(e => e.Description);
+            builder.Property(e => e.Quantity);
+            builder.Property(e => e.UnitSellingPriceExVAT);
         }
     }
 }

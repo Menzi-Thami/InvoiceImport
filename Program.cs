@@ -11,7 +11,7 @@ namespace InvoiceImporter
     /// <summary>
     /// Composition root: reads the file path, wires the dependencies, and runs the import.
     /// </summary>
-    class Program
+    sealed class Program
     {
         static async Task Main(string[] args)
         {

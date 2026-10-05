@@ -40,10 +40,7 @@ namespace InvoiceImporter.Domain
 
         public void AddLine(InvoiceLine line)
         {
-            if (line is null)
-            {
-                throw new ArgumentNullException(nameof(line));
-            }
+            ArgumentNullException.ThrowIfNull(line);
 
             _lines.Add(line);
         }
