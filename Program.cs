@@ -1,3 +1,5 @@
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using InvoiceImporter.Application;
 using InvoiceImporter.Domain;
@@ -9,7 +11,7 @@ namespace InvoiceImporter
     /// <summary>
     /// Composition root: reads the file path, wires the dependencies, and runs the import.
     /// </summary>
-    class Program
+    sealed class Program
     {
         static async Task Main(string[] args)
         {
@@ -28,8 +30,7 @@ namespace InvoiceImporter
                     throw new ArgumentException("No file path was entered.");
                 }
 
-                // Strip quotes added by "Copy as path" and normalise separators.
-                string filePath = input.Replace("\"", "").Replace("\\", "\\\\");
+                string filePath = NormalisePath(input);
 
                 using var dbContext = new InvoiceDbContext();
 
@@ -40,7 +41,26 @@ namespace InvoiceImporter
                 var dataImporter = new DataImporter(
                     csvReader, loggerFactory.CreateLogger<DataImporter>(), repository, invoiceFactory);
 
-                await dataImporter.ImportData(filePath);
+                // Ctrl+C cancels the import cleanly; nothing is saved unless SaveChanges completes.
+                using var cts = new CancellationTokenSource();
+                Console.CancelKeyPress += (_, e) =>
+                {
+                    e.Cancel = true;
+                    cts.Cancel();
+                };
+
+                await dataImporter.ImportData(filePath, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                logger.LogWarning("Import cancelled; nothing was saved");
+                Environment.ExitCode = 1;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 })
+            {
+                // Unique index on InvoiceNumber: another run imported one of these invoices first.
+                logger.LogError(ex, "Invoice import failed: an invoice in the file has already been imported; nothing was saved");
+                Environment.ExitCode = 1;
             }
             catch (Exception ex)
             {
@@ -48,5 +68,10 @@ namespace InvoiceImporter
                 Environment.ExitCode = 1;
             }
         }
+
+        // Only the surrounding quotes from Explorer's "Copy as path" need removing; the
+        // separators are already correct (doubling them breaks \\server\share paths).
+        internal static string NormalisePath(string input) =>
+            input.Trim().Trim('"');
     }
 }

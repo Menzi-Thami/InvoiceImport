@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using InvoiceImporter.Application;
 using InvoiceImporter.Domain;
@@ -24,7 +26,7 @@ namespace InvoiceImporter.Tests
 
             var importer = new DataImporter(csv, NullLogger<DataImporter>.Instance, repo, new PassthroughFactory());
 
-            await importer.ImportData("any.csv");
+            await importer.ImportData("any.csv", CancellationToken.None);
 
             repo.Added.Count.ShouldBe(2);
             repo.SaveChangesCallCount.ShouldBe(1);
@@ -44,10 +46,63 @@ namespace InvoiceImporter.Tests
 
             var importer = new DataImporter(csv, NullLogger<DataImporter>.Instance, repo, new PassthroughFactory());
 
-            await importer.ImportData("any.csv");
+            await importer.ImportData("any.csv", CancellationToken.None);
 
             repo.Added.Count.ShouldBe(1);
             repo.Added[0].InvoiceNumber.ShouldBe("INV-002");
+        }
+
+        [Fact]
+        public async Task ImportData_SkipsDuplicateInvoiceNumbersWithinOneFile()
+        {
+            var csv = new FakeCsvReader(new List<string[]>
+            {
+                new[] { "header" },
+                Row("INV-001"),
+                Row("INV-001"),
+                Row("inv-001"),
+                Row("INV-002"),
+            });
+            var repo = new FakeRepository();
+
+            var importer = new DataImporter(csv, NullLogger<DataImporter>.Instance, repo, new PassthroughFactory());
+
+            await importer.ImportData("any.csv", CancellationToken.None);
+
+            repo.Added.Count.ShouldBe(2);
+            repo.Added[0].InvoiceNumber.ShouldBe("INV-001");
+            repo.Added[1].InvoiceNumber.ShouldBe("INV-002");
+        }
+
+        [Fact]
+        public async Task ImportData_LooksUpExistingInvoicesOnce_RegardlessOfRowCount()
+        {
+            var rows = new List<string[]> { new[] { "header" } };
+            rows.AddRange(Enumerable.Range(1, 50).Select(i => Row($"INV-{i:000}")));
+            rows.Add(Row("INV-001")); // repeat: requested once, not twice
+            var repo = new FakeRepository();
+
+            var importer = new DataImporter(new FakeCsvReader(rows), NullLogger<DataImporter>.Instance, repo, new PassthroughFactory());
+
+            await importer.ImportData("any.csv", CancellationToken.None);
+
+            repo.LookupCallCount.ShouldBe(1);
+            repo.LastRequested.Count.ShouldBe(50);
+            repo.Added.Count.ShouldBe(50);
+        }
+
+        [Fact]
+        public async Task ImportData_WhenCancelled_SavesNothing()
+        {
+            var csv = new FakeCsvReader(new List<string[]> { new[] { "header" }, Row("INV-001") });
+            var repo = new FakeRepository();
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var importer = new DataImporter(csv, NullLogger<DataImporter>.Instance, repo, new PassthroughFactory());
+
+            await Should.ThrowAsync<OperationCanceledException>(() => importer.ImportData("any.csv", cts.Token));
+            repo.SaveChangesCallCount.ShouldBe(0);
         }
 
         [Fact]
@@ -57,7 +112,7 @@ namespace InvoiceImporter.Tests
 
             var importer = new DataImporter(csv, NullLogger<DataImporter>.Instance, new FakeRepository(), new PassthroughFactory());
 
-            await Should.ThrowAsync<InvalidOperationException>(() => importer.ImportData("any.csv"));
+            await Should.ThrowAsync<InvalidOperationException>(() => importer.ImportData("any.csv", CancellationToken.None));
         }
 
         private static string[] Row(string invoiceNumber) =>
@@ -84,12 +139,30 @@ namespace InvoiceImporter.Tests
 
         private sealed class FakeRepository : IInvoiceRepository
         {
-            public HashSet<string> Existing { get; } = new();
+            public HashSet<string> Existing { get; } = new(StringComparer.OrdinalIgnoreCase);
             public List<InvoiceHeader> Added { get; } = new();
             public int SaveChangesCallCount { get; private set; }
+            public int LookupCallCount { get; private set; }
+            public IReadOnlyCollection<string> LastRequested { get; private set; } = Array.Empty<string>();
 
-            public bool InvoiceExists(string invoiceNumber) => Existing.Contains(invoiceNumber);
+            public Task<IReadOnlySet<string>> GetExistingInvoiceNumbersAsync(
+                IReadOnlyCollection<string> invoiceNumbers, CancellationToken cancellationToken)
+            {
+                LookupCallCount++;
+                LastRequested = invoiceNumbers;
+                IReadOnlySet<string> found = new HashSet<string>(
+                    invoiceNumbers.Where(Existing.Contains), StringComparer.OrdinalIgnoreCase);
+                return Task.FromResult(found);
+            }
+
             public void AddInvoice(InvoiceHeader invoice) => Added.Add(invoice);
-            public void SaveChanges() => SaveChangesCallCount++;
-        }    }
+
+            public Task SaveChangesAsync(CancellationToken cancellationToken)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                SaveChangesCallCount++;
+                return Task.CompletedTask;
+            }
+        }
+    }
 }

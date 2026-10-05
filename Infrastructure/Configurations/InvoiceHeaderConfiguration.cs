@@ -11,25 +11,26 @@ namespace InvoiceImporter.Infrastructure.Configurations
     /// </summary>
     public class InvoiceHeaderConfiguration : IEntityTypeConfiguration<InvoiceHeader>
     {
-        public void Configure(EntityTypeBuilder<InvoiceHeader> entity)
+        public void Configure(EntityTypeBuilder<InvoiceHeader> builder)
         {
-            entity.ToTable("InvoiceHeader");
+            builder.ToTable("InvoiceHeader");
 
-            entity.HasKey(e => e.InvoiceId);
-            entity.Property(e => e.InvoiceId).ValueGeneratedOnAdd();
+            builder.HasKey(e => e.InvoiceId);
+            builder.Property(e => e.InvoiceId).ValueGeneratedOnAdd();
 
-            entity.Property(e => e.InvoiceNumber).IsRequired();
-            entity.Property(e => e.Address);
-            entity.Property(e => e.InvoiceDate);
-            entity.Property(e => e.InvoiceTotal);
+            builder.Property(e => e.InvoiceNumber).HasMaxLength(50).IsRequired();
+            builder.HasIndex(e => e.InvoiceNumber).IsUnique();
+            builder.Property(e => e.Address);
+            builder.Property(e => e.InvoiceDate);
+            builder.Property(e => e.InvoiceTotal);
 
-            entity.HasMany(e => e.Lines)
+            builder.HasMany(e => e.Lines)
                 .WithOne(l => l.Invoice!)
                 .HasForeignKey(l => l.InvoiceId)
                 .IsRequired();
 
             // Read-only navigation is backed by the private _lines field.
-            entity.Metadata
+            builder.Metadata
                 .FindNavigation(nameof(InvoiceHeader.Lines))!
                 .SetPropertyAccessMode(PropertyAccessMode.Field);
         }

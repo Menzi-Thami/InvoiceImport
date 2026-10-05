@@ -1,0 +1,26 @@
+root = true
+
+[*]
+indent_style = space
+insert_final_newline = true
+charset = utf-8
+
+[*.cs]
+indent_size = 4
+
+# Console app, not a hot path: LoggerMessage delegates / guarded log arguments add noise, not value.
+dotnet_diagnostic.CA1848.severity = none
+dotnet_diagnostic.CA1873.severity = none
+
+# Culture and comparison rules: the bugs these catch (e.g. Replace without StringComparison) are real here.
+dotnet_diagnostic.CA1307.severity = warning
+dotnet_diagnostic.CA1309.severity = warning
+dotnet_diagnostic.CA1310.severity = warning
+
+[Tests/**.cs]
+# Underscored Method_Scenario_Result names and inline test-data arrays are the test convention.
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1861.severity = none
+
+[*.{json,yml,yaml,xml,csproj,props,targets}]
+indent_size = 2

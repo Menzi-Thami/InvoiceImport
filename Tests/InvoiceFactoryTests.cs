@@ -72,16 +72,57 @@ namespace InvoiceImporter.Tests
             invoice.Lines.Count.ShouldBe(1);
         }
 
-        [Fact]
-        public void CreateInvoice_TreatsNonNumericAmountsAsZero()
+        [Theory]
+        [InlineData("1,5")]      // decimal comma: NumberStyles.Any read this as 15
+        [InlineData("(10)")]     // accounting negative: NumberStyles.Any read this as -10
+        [InlineData("1.234,56")]
+        [InlineData("n/a")]
+        public void CreateInvoice_ThrowsOnUnreadableTotal_NamingInvoiceAndColumn(string total)
         {
-            var row = new[] { "INV-004", "07/04/2024 14:30", "4 Top St", "n/a", "Widget", "-", "abc" };
+            var row = new[] { "INV-004", "07/04/2024 14:30", "4 Top St", total, "Widget", "1", "10" };
+
+            var ex = Should.Throw<FormatException>(() => _factory.CreateInvoice(row));
+
+            ex.Message.ShouldContain("INV-004");
+            ex.Message.ShouldContain("InvoiceTotal");
+        }
+
+        [Theory]
+        [InlineData("-", "10", "Quantity")]
+        [InlineData("1", "abc", "UnitSellingPriceExVAT")]
+        public void CreateInvoice_ThrowsOnUnreadableLineAmount_NamingColumn(string quantity, string unitPrice, string column)
+        {
+            var row = new[] { "INV-004", "07/04/2024 14:30", "4 Top St", "10", "Widget", quantity, unitPrice };
+
+            var ex = Should.Throw<FormatException>(() => _factory.CreateInvoice(row));
+
+            ex.Message.ShouldContain("INV-004");
+            ex.Message.ShouldContain(column);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("  ")]
+        public void CreateInvoice_MapsBlankAmountsToNull(string blank)
+        {
+            var row = new[] { "INV-004", "07/04/2024 14:30", "4 Top St", blank, "Widget", blank, blank };
 
             var invoice = _factory.CreateInvoice(row);
 
-            invoice.InvoiceTotal.ShouldBe(0);
-            invoice.Lines[0].Quantity.ShouldBe(0);
-            invoice.Lines[0].UnitSellingPriceExVAT.ShouldBe(0);
+            invoice.InvoiceTotal.ShouldBeNull();
+            invoice.Lines[0].Quantity.ShouldBeNull();
+            invoice.Lines[0].UnitSellingPriceExVAT.ShouldBeNull();
+        }
+
+        [Theory]
+        [InlineData("1.5", 1.5)]
+        [InlineData(" -2.25 ", -2.25)]
+        [InlineData("10", 10)]
+        public void CreateInvoice_ParsesInvariantAmounts(string total, double expected)
+        {
+            var row = new[] { "INV-004", "07/04/2024 14:30", "4 Top St", total, "Widget", "1", "10" };
+
+            _factory.CreateInvoice(row).InvoiceTotal.ShouldBe(expected);
         }
 
         [Fact]
