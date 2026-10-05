@@ -16,6 +16,10 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="InvoiceImporter.Tests" />
+  </ItemGroup>
+
   <!-- The test project lives under ./Tests; keep its sources out of this project's globs. -->
   <ItemGroup>
     <Compile Remove="Tests\**\*.cs" />

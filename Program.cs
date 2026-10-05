@@ -30,8 +30,7 @@ namespace InvoiceImporter
                     throw new ArgumentException("No file path was entered.");
                 }
 
-                // Strip quotes added by "Copy as path" and normalise separators.
-                string filePath = input.Replace("\"", "").Replace("\\", "\\\\");
+                string filePath = NormalisePath(input);
 
                 using var dbContext = new InvoiceDbContext();
 
@@ -56,5 +55,10 @@ namespace InvoiceImporter
                 Environment.ExitCode = 1;
             }
         }
+
+        // Only the surrounding quotes from Explorer's "Copy as path" need removing; the
+        // separators are already correct (doubling them breaks \\server\share paths).
+        internal static string NormalisePath(string input) =>
+            input.Trim().Trim('"');
     }
 }
