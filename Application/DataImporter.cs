@@ -26,8 +26,7 @@ namespace InvoiceImporter.Application
         {
             _logger.LogInformation("Reading CSV file {FilePath}", filePath);
 
-            List<string[]> csvData = _csvReader.ReadCsv(filePath);
-            var rows = csvData.Skip(1).ToList(); // Skip header row
+            List<string[]> rows = _csvReader.ReadCsv(filePath);
 
             // Case-insensitive to match the database's default collation, which the
             // unique index on InvoiceNumber enforces: "inv-001" and "INV-001" collide there.

@@ -9,6 +9,10 @@ namespace InvoiceImporter.Application
     /// </summary>
     public interface ICsvReader
     {
+        /// <summary>
+        /// Returns the data rows only. The file's header row is consumed by the reader,
+        /// so every row returned is an invoice.
+        /// </summary>
         List<string[]> ReadCsv(string filePath);
     }
 }
