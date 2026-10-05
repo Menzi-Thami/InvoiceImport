@@ -13,7 +13,8 @@ them to the database. Paths copied from Explorer with "Copy as path" work as-is 
 surrounding quotes are stripped for you.
 
 The first line of the file must be a header row (column names). It is read and
-skipped; every line after it is imported as an invoice.
+skipped; every line after it is imported as an invoice. Windows (CRLF) and Unix (LF)
+line endings both work, with or without a newline at the end of the file.
 
 Amounts (total, quantity, unit price) must use a decimal point and no thousands
 separator, e.g. `1234.56` or `-2.5`. A blank amount is stored as empty (NULL). Any

@@ -114,10 +114,16 @@ namespace InvoiceImporter.Tests
             await Should.ThrowAsync<InvalidOperationException>(() => importer.ImportData("any.csv", CancellationToken.None));
         }
 
-        [Fact]
-        public async Task ImportData_FromFileWithHeader_ImportsEveryInvoice()
+        [Theory]
+        [InlineData("CRLF", true)]
+        [InlineData("CRLF", false)]
+        [InlineData("LF", true)]
+        [InlineData("LF", false)]
+        public async Task ImportData_FromFileWithHeader_ImportsEveryInvoice(string lineEnding, bool trailingNewline)
         {
             var path = WriteCsv(
+                lineEnding == "LF" ? "\n" : "\r\n",
+                trailingNewline,
                 "InvoiceNumber,InvoiceDate,Address,InvoiceTotal,Description,Quantity,UnitPrice",
                 "INV-001,07/04/2024 14:30,1 High Street,10,Widget,1,10",
                 "INV-002,08/04/2024 09:00,2 Low Road,25.5,Gadget,3,8.5");
@@ -140,7 +146,7 @@ namespace InvoiceImporter.Tests
         [Fact]
         public async Task ImportData_FromHeaderOnlyFile_ImportsNothingWithoutError()
         {
-            var path = WriteCsv("InvoiceNumber,InvoiceDate,Address,InvoiceTotal,Description,Quantity,UnitPrice");
+            var path = WriteCsv("\r\n", trailingNewline: true, "InvoiceNumber,InvoiceDate,Address,InvoiceTotal,Description,Quantity,UnitPrice");
             try
             {
                 var repo = new FakeRepository();
@@ -158,11 +164,10 @@ namespace InvoiceImporter.Tests
             }
         }
 
-        private static string WriteCsv(params string[] lines)
+        private static string WriteCsv(string lineEnding, bool trailingNewline, params string[] lines)
         {
-            // CRLF explicitly: CSVFile's default LineSeparator is "\r\n", and WriteAllLines would use LF on Linux CI.
             var path = Path.Combine(Path.GetTempPath(), $"invoices-{Guid.NewGuid():N}.csv");
-            File.WriteAllText(path, string.Join("\r\n", lines) + "\r\n");
+            File.WriteAllText(path, string.Join(lineEnding, lines) + (trailingNewline ? lineEnding : ""));
             return path;
         }
 
