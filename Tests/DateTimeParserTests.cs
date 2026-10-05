@@ -18,12 +18,27 @@ namespace InvoiceImporter.Tests
         }
 
         [Fact]
-        public void ParseDateTime_FallsBackToUsFormat()
+        public void ParseDateTime_DoesNotFallBackToUsFormat()
         {
-            // 13 cannot be a month, so only MM/dd/yyyy matches.
-            var result = _parser.ParseDateTime("12/13/2024 09:05");
+            // Previously accepted as 13 December via an MM/dd fallback, while 04/03 in the
+            // same US file was silently read as 4 March. One format per file, so it throws.
+            Should.Throw<ArgumentException>(() => _parser.ParseDateTime("12/13/2024 09:05"));
+        }
 
-            result.ShouldBe(new DateTime(2024, 12, 13, 9, 5, 0));
+        [Fact]
+        public void ParseDateTime_DefaultFormatIsUk()
+        {
+            _parser.ParseDateTime("04/03/2024 10:00").ShouldBe(new DateTime(2024, 3, 4, 10, 0, 0));
+        }
+
+        [Fact]
+        public void ParseDateTime_UsFormat_ReadsAmbiguousDateAsUs()
+        {
+            var parser = new DateTimeParser(DateTimeParser.UsFormat);
+
+            parser.ParseDateTime("04/03/2024 10:00").ShouldBe(new DateTime(2024, 4, 3, 10, 0, 0));
+            parser.ParseDateTime("12/13/2024 09:05").ShouldBe(new DateTime(2024, 12, 13, 9, 5, 0));
+            Should.Throw<ArgumentException>(() => parser.ParseDateTime("13/12/2024 09:05"));
         }
 
         [Theory]

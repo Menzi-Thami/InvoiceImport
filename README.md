@@ -17,6 +17,12 @@ separator, e.g. `1234.56` or `-2.5`. A blank amount is stored as empty (NULL). A
 other value, such as `1,5`, `1.234,56` or `n/a`, stops the import with an error naming
 the invoice and column, and nothing from the file is saved.
 
+Invoice dates must be UK format, `dd/MM/yyyy HH:mm` (e.g. `07/04/2024 14:30` is 7 April).
+A date in any other format, including US `MM/dd/yyyy`, stops the import. The tool used to
+fall back to US format per value, which silently read `04/03/2024` in a US file as
+4 March; a file from a US source needs `new DateTimeParser(DateTimeParser.UsFormat)` in
+`Program.cs`.
+
 ## How it's put together
 
 ```
