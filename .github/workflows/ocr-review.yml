@@ -1,12 +1,13 @@
 name: AI code review
 
-# Reviews human pull requests against the shared .NET rules using GitHub Models,
-# which is free and authenticates with the workflow's own GITHUB_TOKEN: no API key
-# to create, store or rotate. Gated on the OCR_ENABLED repository variable:
+# Inert until you opt in. The job is gated on the OCR_ENABLED variable, so this
+# file can sit here without failing every pull request before the key exists:
 #
-#   gh variable set OCR_ENABLED   --body "true" --repo <repo>
-#   gh variable set OCR_LLM_URL   --body "https://models.github.ai/inference" --repo <repo>
-#   gh variable set OCR_LLM_MODEL --body "openai/gpt-4.1-mini" --repo <repo>
+#   1. gh secret   set OCR_LLM_AUTH_TOKEN --repo <repo>   # a free Gemini API key (aistudio.google.com/apikey)
+#   2. gh variable set OCR_ENABLED --body "true" --repo <repo>
+#
+# OCR_LLM_URL / _MODEL are repository variables (Gemini's OpenAI-compatible endpoint).
+# GitHub Models was retired on 2026-07-30, so a key-free option no longer exists.
 
 on:
   pull_request_target:
@@ -15,7 +16,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  models: read
 
 concurrency:
   group: ocr-${{ github.event.pull_request.number }}
@@ -41,20 +41,20 @@ jobs:
       - uses: alibaba/open-code-review@main
         with:
           llm_url: ${{ vars.OCR_LLM_URL }}
-          llm_auth_token: ${{ github.token }}
+          llm_auth_token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
           llm_model: ${{ vars.OCR_LLM_MODEL }}
           llm_protocol: 'openai'
           stream_progress: 'true'
           rule: ${{ runner.temp }}/review-rules/.opencodereview/rule.json
 
-          # GitHub Models speaks the OpenAI-compatible protocol, so the action's
+          # Gemini speaks the OpenAI-compatible protocol, so the action's
           # default extra_body (an Anthropic-shaped "thinking" key) does not
           # apply. Sent empty to avoid a 400 on an unknown field.
           llm_extra_body: '{}'
 
-          # Free-tier tuning. GitHub Models rate-limits requests per minute and
-          # per day, and a review fans out one request per file, so concurrency
-          # is held down to stay under it.
+          # Free-tier tuning. The free Gemini tier caps requests per minute,
+          # and a review fans out one request per file, so concurrency is held
+          # down to stay under it. Raise it on a paid key.
           review_concurrency: '2'
           effort: 'low'
           max_tokens_budget: '1000000'
