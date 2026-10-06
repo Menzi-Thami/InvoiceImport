@@ -9,7 +9,7 @@ namespace InvoiceImporter.Infrastructure.Configurations
     /// EF Core mapping for <see cref="InvoiceHeader"/>. Keeps all persistence concerns
     /// out of the domain type (which stays free of data annotations).
     /// </summary>
-    public class InvoiceHeaderConfiguration : IEntityTypeConfiguration<InvoiceHeader>
+    public sealed class InvoiceHeaderConfiguration : IEntityTypeConfiguration<InvoiceHeader>
     {
         public void Configure(EntityTypeBuilder<InvoiceHeader> builder)
         {
