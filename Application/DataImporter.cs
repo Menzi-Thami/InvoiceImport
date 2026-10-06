@@ -3,7 +3,7 @@ using InvoiceImporter.Domain;
 
 namespace InvoiceImporter.Application
 {
-    public class DataImporter : IDataImporter
+    public sealed class DataImporter : IDataImporter
     {
         private readonly ICsvReader _csvReader;
         private readonly ILogger<DataImporter> _logger;

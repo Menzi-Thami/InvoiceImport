@@ -4,7 +4,7 @@ using InvoiceImporter.Domain.Services;
 
 namespace InvoiceImporter.Domain
 {
-    public class InvoiceFactory : IInvoiceFactory
+    public sealed class InvoiceFactory : IInvoiceFactory
     {
         private const int MinimumColumns = 7;
         private const int FirstLineColumn = 4;

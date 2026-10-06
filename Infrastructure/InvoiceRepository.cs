@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InvoiceImporter.Infrastructure
 {
-    public class InvoiceRepository : IInvoiceRepository
+    public sealed class InvoiceRepository : IInvoiceRepository
     {
         // Each number becomes a SQL parameter; SQL Server allows at most 2,100 per command.
         private const int LookupChunkSize = 1000;
