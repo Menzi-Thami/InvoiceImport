@@ -43,7 +43,8 @@ jobs:
           llm_url: ${{ vars.OCR_LLM_URL }}
           llm_auth_token: ${{ github.token }}
           llm_model: ${{ vars.OCR_LLM_MODEL }}
-          llm_use_anthropic: 'false'
+          llm_protocol: 'openai'
+          stream_progress: 'true'
           rule: ${{ runner.temp }}/review-rules/.opencodereview/rule.json
 
           # GitHub Models speaks the OpenAI-compatible protocol, so the action's
