@@ -32,12 +32,11 @@ jobs:
       vars.OCR_ENABLED == 'true'
       && github.event.pull_request.user.type != 'Bot'
     steps:
+      # The review action checks the repository out itself and cleans the workspace,
+      # so rules fetched into the workspace vanish before it reads them. Keep them in
+      # RUNNER_TEMP instead.
       - name: Fetch shared .NET review rules
-        uses: actions/checkout@v7
-        with:
-          repository: Menzi-Thami/dotnet-review-rules
-          ref: main
-          path: .review-rules
+        run: git clone --depth 1 https://github.com/Menzi-Thami/dotnet-review-rules.git "$RUNNER_TEMP/review-rules"
 
       - uses: alibaba/open-code-review@main
         with:
@@ -45,7 +44,7 @@ jobs:
           llm_auth_token: ${{ github.token }}
           llm_model: ${{ vars.OCR_LLM_MODEL }}
           llm_use_anthropic: 'false'
-          rule: .review-rules/.opencodereview/rule.json
+          rule: ${{ runner.temp }}/review-rules/.opencodereview/rule.json
 
           # GitHub Models speaks the OpenAI-compatible protocol, so the action's
           # default extra_body (an Anthropic-shaped "thinking" key) does not
