@@ -7,7 +7,7 @@ using InvoiceImporter.Application;
 
 namespace InvoiceImporter.Infrastructure
 {
-    public class CsvReader : ICsvReader
+    public sealed class CsvReader : ICsvReader
     {
         public List<string[]> ReadCsv(string filePath)
         {
