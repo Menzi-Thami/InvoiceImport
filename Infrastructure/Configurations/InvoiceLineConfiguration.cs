@@ -7,7 +7,7 @@ namespace InvoiceImporter.Infrastructure.Configurations
     /// <summary>
     /// EF Core mapping for <see cref="InvoiceLine"/>.
     /// </summary>
-    public class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceLine>
+    public sealed class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceLine>
     {
         public void Configure(EntityTypeBuilder<InvoiceLine> builder)
         {
